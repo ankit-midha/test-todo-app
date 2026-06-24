@@ -1,0 +1,130 @@
+name: Agentic Workflow Trial
+description: Run one phase of the agentic development workflow from payload ticket text
+
+inputs:
+  phase:
+    required: false
+    default: auto
+  jira_key:
+    required: true
+  ticket_title:
+    required: false
+  ticket_description:
+    required: false
+  acceptance_criteria:
+    required: false
+  agent_provider:
+    required: false
+    default: bedrock
+  anthropic_api_key:
+    required: false
+  aws_role_arn:
+    required: false
+  aws_region:
+    required: false
+    default: ap-southeast-2
+  bedrock_aip_arn:
+    required: false
+  team_id:
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - name: Prepare ticket branch
+      shell: bash
+      run: |
+        SAFE_KEY="$(printf '%s' "${{ inputs.jira_key }}" | tr -c 'A-Za-z0-9._-' '-')"
+        BRANCH="agentic/${SAFE_KEY}"
+        git config user.name "agentic-workflow-bot"
+        git config user.email "agentic-workflow-bot@users.noreply.github.com"
+        if git ls-remote --exit-code --heads origin "${BRANCH}" >/dev/null 2>&1; then
+          git fetch origin "${BRANCH}"
+          git checkout "${BRANCH}"
+          git reset --hard "origin/${BRANCH}"
+        else
+          git checkout -B "${BRANCH}"
+        fi
+
+    - name: Determine phase
+      id: phase
+      shell: bash
+      run: |
+        ${{ github.action_path }}/scripts/which-phase.sh \
+          --requested-phase "${{ inputs.phase }}" \
+          >> "$GITHUB_OUTPUT"
+
+    - name: Exit if no phase to run
+      if: steps.phase.outputs.name == 'none'
+      shell: bash
+      run: |
+        echo "No phase to run. The ticket is likely waiting on a human gate."
+
+    - name: Configure AWS credentials
+      if: steps.phase.outputs.name != 'none' && inputs.agent_provider == 'bedrock'
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.aws_role_arn }}
+        role-session-name: agentic-workflow-${{ inputs.jira_key }}-${{ steps.phase.outputs.name }}
+        aws-region: ${{ inputs.aws_region }}
+
+    - name: Persist payload ticket
+      if: steps.phase.outputs.name != 'none'
+      shell: bash
+      run: |
+        mkdir -p .workflow
+        python3 "${{ github.action_path }}/scripts/write-ticket-payload.py" \
+          --ticket-key "${{ inputs.jira_key }}" \
+          --title "${{ inputs.ticket_title }}" \
+          --description "${{ inputs.ticket_description }}" \
+          --acceptance-criteria "${{ inputs.acceptance_criteria }}" \
+          --output .workflow/ticket.json
+
+    - name: Read phase config
+      id: config
+      if: steps.phase.outputs.name != 'none'
+      shell: bash
+      run: |
+        PHASE_DIR="${{ github.action_path }}/phases/${{ steps.phase.outputs.name }}"
+        echo "prompt_file=${PHASE_DIR}/prompt.md" >> "$GITHUB_OUTPUT"
+        echo "allowed_tools=$(tr '\n' ',' < "${PHASE_DIR}/allowed-tools.txt")" >> "$GITHUB_OUTPUT"
+
+    - name: Run phase agent
+      if: steps.phase.outputs.name != 'none'
+      uses: anthropics/claude-code-action@v1
+      with:
+        prompt-file: ${{ steps.config.outputs.prompt_file }}
+        allowed-tools: ${{ steps.config.outputs.allowed_tools }}
+        mcp-config: ${{ github.action_path }}/mcp-payload.json
+      env:
+        AGENT_PROVIDER: ${{ inputs.agent_provider }}
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic_api_key }}
+        AWS_REGION: ${{ inputs.aws_region }}
+        BEDROCK_AIP_ARN: ${{ inputs.bedrock_aip_arn }}
+        TEAM_ID: ${{ inputs.team_id }}
+        TICKET_PAYLOAD_FILE: .workflow/ticket.json
+        JIRA_KEY: ${{ inputs.jira_key }}
+        PHASE_NAME: ${{ steps.phase.outputs.name }}
+        GH_TOKEN: ${{ github.token }}
+
+    - name: Emit Memory event
+      if: always() && steps.phase.outputs.name != 'none' && inputs.agent_provider == 'bedrock'
+      shell: bash
+      run: |
+        ${{ github.action_path }}/scripts/memory-write.sh \
+          --jira-key "${{ inputs.jira_key }}" \
+          --phase "${{ steps.phase.outputs.name }}" \
+          --team-id "${{ inputs.team_id }}" \
+          --status "${{ job.status }}"
+      env:
+        AWS_REGION: ${{ inputs.aws_region }}
+        AGENTIC_MEMORY_ID: AgenticworkflowPilotTeam-UyLLt1Cz5P
+
+    - name: Post local audit
+      if: always() && steps.phase.outputs.name != 'none'
+      shell: bash
+      run: |
+        ${{ github.action_path }}/scripts/post-audit.sh \
+          --jira-key "${{ inputs.jira_key }}" \
+          --phase "${{ steps.phase.outputs.name }}" \
+          --status "${{ job.status }}"

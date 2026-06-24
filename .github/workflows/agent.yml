@@ -1,0 +1,69 @@
+name: Agentic Ticket
+
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: Phase to run. Use auto for normal routing.
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - intake
+          - assess-context
+          - plan
+          - implement
+          - verify
+          - open-pr
+      ticket_key:
+        description: Ticket key for this trial run
+        required: true
+        default: TODO-1
+      ticket_title:
+        description: Ticket title
+        required: true
+        default: Build the initial todo app
+      ticket_description:
+        description: Ticket description
+        required: true
+        default: Build the first version of a browser-based todo app from scratch.
+      acceptance_criteria:
+        description: Acceptance criteria, one per line
+        required: true
+        default: |
+          Users can add a todo item.
+          Users can mark a todo item complete.
+          Users can delete a todo item.
+          The app can run locally without a backend.
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
+jobs:
+  agent:
+    runs-on: [self-hosted, linux, arm64, origin-rx]
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run agentic workflow
+        uses: ./.github/actions/agentic-workflow
+        with:
+          phase: ${{ inputs.phase }}
+          jira_key: ${{ inputs.ticket_key }}
+          ticket_title: ${{ inputs.ticket_title }}
+          ticket_description: ${{ inputs.ticket_description }}
+          acceptance_criteria: ${{ inputs.acceptance_criteria }}
+          agent_provider: bedrock
+          aws_region: ap-southeast-2
+          aws_role_arn: arn:aws:iam::746669221309:role/agenticworkflow-team-pilot-team-role
+          bedrock_aip_arn: arn:aws:bedrock:ap-southeast-2:746669221309:application-inference-profile/j863j8pdathx
+          team_id: pilot-team
