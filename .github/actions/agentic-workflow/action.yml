@@ -102,6 +102,7 @@ runs:
         } >> "$GITHUB_OUTPUT"
 
     - name: Run phase agent
+      id: phase-agent
       if: steps.phase.outputs.name != 'none'
       uses: anthropics/claude-code-action@v1
       with:
@@ -137,6 +138,7 @@ runs:
         GH_TOKEN: ${{ github.token }}
 
     - name: Validate phase output
+      id: validate-phase
       if: steps.phase.outputs.name != 'none'
       shell: bash
       run: |
@@ -161,14 +163,14 @@ runs:
         fi
 
     - name: Emit Memory event
-      if: always() && steps.phase.outputs.name != 'none' && inputs.agent_provider == 'bedrock'
+      if: false
       shell: bash
       run: |
         ${{ github.action_path }}/scripts/memory-write.sh \
           --jira-key "${{ inputs.jira_key }}" \
           --phase "${{ steps.phase.outputs.name }}" \
           --team-id "${{ inputs.team_id }}" \
-          --status "${{ job.status }}"
+          --status "${{ steps.phase-agent.outcome == 'success' && steps.validate-phase.outcome == 'success' && 'success' || 'failure' }}"
       env:
         AWS_REGION: ${{ inputs.aws_region }}
         AGENTIC_MEMORY_ID: AgenticworkflowPilotTeam-UyLLt1Cz5P
@@ -180,4 +182,4 @@ runs:
         ${{ github.action_path }}/scripts/post-audit.sh \
           --jira-key "${{ inputs.jira_key }}" \
           --phase "${{ steps.phase.outputs.name }}" \
-          --status "${{ job.status }}"
+          --status "${{ steps.phase-agent.outcome == 'success' && steps.validate-phase.outcome == 'success' && 'success' || 'failure' }}"
