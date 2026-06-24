@@ -119,7 +119,8 @@ runs:
           {
             "env": {
               "AWS_REGION": "${{ inputs.aws_region }}",
-              "ANTHROPIC_MODEL": "${{ inputs.bedrock_aip_arn }}",
+              "ANTHROPIC_MODEL": "opus",
+              "ANTHROPIC_DEFAULT_OPUS_MODEL": "${{ inputs.bedrock_aip_arn }}",
               "ANTHROPIC_DEFAULT_SONNET_MODEL": "${{ inputs.bedrock_aip_arn }}",
               "ANTHROPIC_DEFAULT_HAIKU_MODEL": "${{ inputs.bedrock_aip_arn }}",
               "TEAM_ID": "${{ inputs.team_id }}",
@@ -131,7 +132,8 @@ runs:
       env:
         AGENT_PROVIDER: ${{ inputs.agent_provider }}
         ANTHROPIC_API_KEY: ${{ inputs.anthropic_api_key }}
-        ANTHROPIC_MODEL: ${{ inputs.bedrock_aip_arn }}
+        ANTHROPIC_MODEL: opus
+        ANTHROPIC_DEFAULT_OPUS_MODEL: ${{ inputs.bedrock_aip_arn }}
         ANTHROPIC_DEFAULT_SONNET_MODEL: ${{ inputs.bedrock_aip_arn }}
         ANTHROPIC_DEFAULT_HAIKU_MODEL: ${{ inputs.bedrock_aip_arn }}
         AWS_REGION: ${{ inputs.aws_region }}
