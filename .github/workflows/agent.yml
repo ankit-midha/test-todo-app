@@ -65,5 +65,5 @@ jobs:
           agent_provider: bedrock
           aws_region: ap-southeast-2
           aws_role_arn: arn:aws:iam::746669221309:role/agenticworkflow-team-pilot-team-role
-          bedrock_aip_arn: au.anthropic.claude-sonnet-4-6
+          bedrock_aip_arn: arn:aws:bedrock:ap-southeast-2:746669221309:application-inference-profile/j863j8pdathx
           team_id: pilot-team
