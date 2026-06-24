@@ -28,9 +28,10 @@ elif [[ ! -f "${ARTIFACTS_DIR}/context.md" ]]; then
   echo "name=assess-context"
 elif [[ ! -f "${ARTIFACTS_DIR}/plan.md" ]]; then
   echo "name=plan"
+elif [[ ! -f "${ARTIFACTS_DIR}/implementation.md" ]]; then
+  echo "name=none"
 elif [[ ! -f "${ARTIFACTS_DIR}/verify.md" ]]; then
-  echo "name=implement"
+  echo "name=verify"
 else
   echo "name=open-pr"
 fi
-

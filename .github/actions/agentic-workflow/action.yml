@@ -101,6 +101,23 @@ runs:
           echo "AGENTIC_PROMPT_EOF"
         } >> "$GITHUB_OUTPUT"
 
+    - name: Expose runner Node.js
+      if: steps.phase.outputs.name != 'none'
+      shell: bash
+      run: |
+        RUNNER_ROOT="$(cd "${RUNNER_TEMP}/../.." && pwd)"
+        for candidate in \
+          "${RUNNER_ROOT}/externals/node24/bin" \
+          "${RUNNER_ROOT}/externals/node20/bin"
+        do
+          if [[ -x "${candidate}/node" ]]; then
+            echo "${candidate}" >> "$GITHUB_PATH"
+            echo "Using bundled Node.js from ${candidate}"
+            exit 0
+          fi
+        done
+        echo "No bundled runner Node.js found; continuing with existing PATH."
+
     - name: Run phase agent
       id: phase-agent
       if: steps.phase.outputs.name != 'none'
@@ -113,7 +130,7 @@ runs:
         claude_args: |
           --mcp-config ${{ github.action_path }}/mcp-payload.json
           --allowedTools ${{ steps.config.outputs.allowed_tools }}
-          --max-turns 12
+          --max-turns 24
         show_full_output: "true"
         settings: |
           {
@@ -153,8 +170,9 @@ runs:
           intake) required_artifact=".workflow/artifacts/spec.md" ;;
           assess-context) required_artifact=".workflow/artifacts/context.md" ;;
           plan) required_artifact=".workflow/artifacts/plan.md" ;;
+          implement) required_artifact=".workflow/artifacts/implementation.md" ;;
           verify) required_artifact=".workflow/artifacts/verify.md" ;;
-          implement|open-pr) required_artifact="" ;;
+          open-pr) required_artifact="" ;;
           *) required_artifact="" ;;
         esac
 

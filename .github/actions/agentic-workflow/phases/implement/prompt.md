@@ -15,8 +15,10 @@ Implement the approved plan.
 2. Implement only the planned scope.
 3. Follow the plan step order.
 4. Make one commit per plan step where practical, using messages like `step 1: <summary>`.
-5. Push the current branch to origin after committing.
-6. If the plan is materially wrong, stop and write `.workflow/artifacts/implementation-blocked.md` explaining why.
+5. Write `.workflow/artifacts/implementation.md` summarizing the implementation commits and any verification gaps.
+6. Commit `.workflow/artifacts/implementation.md` with message `implement: summary for <JIRA_KEY>`.
+7. Push the current branch to origin after committing.
+8. If the plan is materially wrong, stop and write `.workflow/artifacts/implementation-blocked.md` explaining why.
 
 ## Constraints
 
