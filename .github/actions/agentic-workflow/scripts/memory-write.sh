@@ -28,6 +28,7 @@ NS="/teams/${TEAM_ID}/repos/${REPO_ID}/tickets/${JIRA_KEY}/"
 PAYLOAD="$(printf '{"schema_version":1,"phase":"%s","status":"%s","jira_key":"%s","team_id":"%s","repo":"%s","branch":"%s","commit_sha":"%s","workflow_run_id":"%s"}' \
   "${PHASE}" "$(echo "${STATUS}" | tr '[:upper:]' '[:lower:]')" "${JIRA_KEY}" "${TEAM_ID}" \
   "${GITHUB_REPOSITORY:-unknown}" "${GITHUB_REF_NAME:-unknown}" "${GITHUB_SHA:-unknown}" "${GITHUB_RUN_ID:-0}")"
+EVENT_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 echo "memory-write: ns=${NS} phase=${PHASE} status=${STATUS}"
 if ! aws bedrock-agentcore create-event \
@@ -37,6 +38,7 @@ if ! aws bedrock-agentcore create-event \
   --actor-id "agentic-workflow-bot" \
   --session-id "${JIRA_KEY}" \
   --event-type "phase-boundary" \
+  --event-timestamp "${EVENT_TIMESTAMP}" \
   --payload "${PAYLOAD}" \
   --no-cli-pager; then
   echo "memory-write: failed; continuing because this trial must not block on memory telemetry" >&2

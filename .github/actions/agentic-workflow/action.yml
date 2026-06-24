@@ -114,6 +114,7 @@ runs:
           --mcp-config ${{ github.action_path }}/mcp-payload.json
           --allowedTools ${{ steps.config.outputs.allowed_tools }}
           --max-turns 12
+        show_full_output: "true"
         settings: |
           {
             "env": {
@@ -134,6 +135,30 @@ runs:
         JIRA_KEY: ${{ inputs.jira_key }}
         PHASE_NAME: ${{ steps.phase.outputs.name }}
         GH_TOKEN: ${{ github.token }}
+
+    - name: Validate phase output
+      if: steps.phase.outputs.name != 'none'
+      shell: bash
+      run: |
+        case "${{ steps.phase.outputs.name }}" in
+          intake) required_artifact=".workflow/artifacts/spec.md" ;;
+          assess-context) required_artifact=".workflow/artifacts/context.md" ;;
+          plan) required_artifact=".workflow/artifacts/plan.md" ;;
+          verify) required_artifact=".workflow/artifacts/verify.md" ;;
+          implement|open-pr) required_artifact="" ;;
+          *) required_artifact="" ;;
+        esac
+
+        if [[ -n "${required_artifact}" && ! -s "${required_artifact}" ]]; then
+          echo "::error::Phase ${{ steps.phase.outputs.name }} completed without required artifact ${required_artifact}."
+          echo "::error::Claude Code returned success to the action wrapper, but no workflow artifact was produced."
+          exit 1
+        fi
+
+        if [[ -n "$(git status --porcelain)" ]]; then
+          echo "Working tree has uncommitted changes after phase:"
+          git status --short
+        fi
 
     - name: Emit Memory event
       if: always() && steps.phase.outputs.name != 'none' && inputs.agent_provider == 'bedrock'
