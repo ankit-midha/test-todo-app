@@ -111,7 +111,6 @@ runs:
         use_bedrock: ${{ inputs.agent_provider == 'bedrock' && 'true' || 'false' }}
         anthropic_api_key: ${{ inputs.anthropic_api_key }}
         claude_args: |
-          --model ${{ inputs.bedrock_aip_arn }}
           --mcp-config ${{ github.action_path }}/mcp-payload.json
           --allowedTools ${{ steps.config.outputs.allowed_tools }}
           --max-turns 12
@@ -120,6 +119,9 @@ runs:
           {
             "env": {
               "AWS_REGION": "${{ inputs.aws_region }}",
+              "ANTHROPIC_MODEL": "${{ inputs.bedrock_aip_arn }}",
+              "ANTHROPIC_DEFAULT_SONNET_MODEL": "${{ inputs.bedrock_aip_arn }}",
+              "ANTHROPIC_DEFAULT_HAIKU_MODEL": "${{ inputs.bedrock_aip_arn }}",
               "TEAM_ID": "${{ inputs.team_id }}",
               "TICKET_PAYLOAD_FILE": ".workflow/ticket.json",
               "JIRA_KEY": "${{ inputs.jira_key }}",
@@ -129,6 +131,9 @@ runs:
       env:
         AGENT_PROVIDER: ${{ inputs.agent_provider }}
         ANTHROPIC_API_KEY: ${{ inputs.anthropic_api_key }}
+        ANTHROPIC_MODEL: ${{ inputs.bedrock_aip_arn }}
+        ANTHROPIC_DEFAULT_SONNET_MODEL: ${{ inputs.bedrock_aip_arn }}
+        ANTHROPIC_DEFAULT_HAIKU_MODEL: ${{ inputs.bedrock_aip_arn }}
         AWS_REGION: ${{ inputs.aws_region }}
         BEDROCK_AIP_ARN: ${{ inputs.bedrock_aip_arn }}
         TEAM_ID: ${{ inputs.team_id }}
