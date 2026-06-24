@@ -86,16 +86,44 @@ runs:
       shell: bash
       run: |
         PHASE_DIR="${{ github.action_path }}/phases/${{ steps.phase.outputs.name }}"
-        echo "prompt_file=${PHASE_DIR}/prompt.md" >> "$GITHUB_OUTPUT"
-        echo "allowed_tools=$(tr '\n' ',' < "${PHASE_DIR}/allowed-tools.txt")" >> "$GITHUB_OUTPUT"
+        ALLOWED_TOOLS="$(awk 'NF { values = values sep $0; sep = "," } END { print values }' "${PHASE_DIR}/allowed-tools.txt")"
+        echo "allowed_tools=${ALLOWED_TOOLS}" >> "$GITHUB_OUTPUT"
+        {
+          echo "prompt<<AGENTIC_PROMPT_EOF"
+          cat "${PHASE_DIR}/prompt.md"
+          printf '\n## Runtime Context\n\n'
+          printf '%s\n' '- Repository: ${{ github.repository }}'
+          printf '%s\n' '- Ticket key: ${{ inputs.jira_key }}'
+          printf '%s\n' '- Phase: ${{ steps.phase.outputs.name }}'
+          printf '%s\n' '- Ticket payload file: .workflow/ticket.json'
+          printf '%s\n' '- Team id: ${{ inputs.team_id }}'
+          printf '\n%s\n' 'Run this phase autonomously. Use the current checked-out branch prepared by the workflow.'
+          echo "AGENTIC_PROMPT_EOF"
+        } >> "$GITHUB_OUTPUT"
 
     - name: Run phase agent
       if: steps.phase.outputs.name != 'none'
       uses: anthropics/claude-code-action@v1
       with:
-        prompt-file: ${{ steps.config.outputs.prompt_file }}
-        allowed-tools: ${{ steps.config.outputs.allowed_tools }}
-        mcp-config: ${{ github.action_path }}/mcp-payload.json
+        prompt: ${{ steps.config.outputs.prompt }}
+        github_token: ${{ github.token }}
+        use_bedrock: ${{ inputs.agent_provider == 'bedrock' && 'true' || 'false' }}
+        anthropic_api_key: ${{ inputs.anthropic_api_key }}
+        claude_args: |
+          --model ${{ inputs.bedrock_aip_arn }}
+          --mcp-config ${{ github.action_path }}/mcp-payload.json
+          --allowedTools ${{ steps.config.outputs.allowed_tools }}
+          --max-turns 12
+        settings: |
+          {
+            "env": {
+              "AWS_REGION": "${{ inputs.aws_region }}",
+              "TEAM_ID": "${{ inputs.team_id }}",
+              "TICKET_PAYLOAD_FILE": ".workflow/ticket.json",
+              "JIRA_KEY": "${{ inputs.jira_key }}",
+              "PHASE_NAME": "${{ steps.phase.outputs.name }}"
+            }
+          }
       env:
         AGENT_PROVIDER: ${{ inputs.agent_provider }}
         ANTHROPIC_API_KEY: ${{ inputs.anthropic_api_key }}
